@@ -38,31 +38,31 @@
 <div class="app">
   <header>
     <div class="tools">
-      <button class="tool" aria-label="Horn" title="Horn">♬</button>
-      <button class="tool" aria-label="Lights" title="Lights">◉</button>
+      <button class="tool" aria-label="Horn" title="Horn">&#9834;</button>
+      <button class="tool" aria-label="Lights" title="Lights">&#9673;</button>
       <button class="tool" aria-label="Parking brake" title="Parking brake">P</button>
     </div>
     <div id="status" class="status"><i class="dot"></i><span id="statusText">CONNECTING</span></div>
     <div class="tools">
-      <button class="tool" aria-label="Menu" title="Menu">☰</button>
+      <button class="tool" id="menuButton" aria-label="Menu" title="Menu">&#9776;</button>
     </div>
   </header>
 
   <main class="controls">
     <div class="stick-wrap">
       <div class="stick" id="throttleStick" aria-label="Throttle joystick">
-        <div class="knob" id="throttleKnob"><span>↕</span></div>
+        <div class="knob" id="throttleKnob"><span>&#8597;</span></div>
       </div>
-      <div class="hint">THROTTLE · FORWARD / REVERSE</div>
+      <div class="hint">THROTTLE &middot; FORWARD / REVERSE</div>
     </div>
     <div class="stick-wrap">
       <div class="stick right" id="steeringStick" aria-label="Steering joystick">
-        <div class="knob" id="steeringKnob"><span style="color:#20b98e">‹ ›</span></div>
+        <div class="knob" id="steeringKnob"><span style="color:#20b98e">&#8249; &#8250;</span></div>
       </div>
-      <div class="hint">STEERING · LEFT / RIGHT</div>
+      <div class="hint">STEERING &middot; LEFT / RIGHT</div>
     </div>
   </main>
-  <div class="footer">Move farther from the center for more speed · Release to stop</div>
+  <div class="footer">Move farther from the center for more speed &middot; Release to stop</div>
 </div>
 
 <script>
@@ -71,12 +71,17 @@
   const DEAD_ZONE = 0.06;
   const SEND_INTERVAL_MS = 60;
   const MAX_STICK_TRAVEL = 0.34; // fraction of joystick diameter
+  let BASE_URL = "";
   let throttle = 0; // -1 reverse, +1 forward
   let steering = 0; // -1 left, +1 right
   let lastSent = "";
   let lastSendAt = 0;
   let requestBusy = false;
   let activePointers = new Map();
+
+  try {
+    if (window.Android && window.Android.getBaseUrl) BASE_URL = window.Android.getBaseUrl() || "";
+  } catch (_) {}
 
   const status = document.getElementById("status");
   const statusText = document.getElementById("statusText");
@@ -88,9 +93,14 @@
 
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
+  function controlUrl(l, r) {
+    return `${BASE_URL}/control?left=${l}&right=${r}`;
+  }
+
   function updateDrive(force = false) {
     // Differential-drive mixing. Throttle displacement sets speed;
     // steering changes the relative speed of the two motors.
+    if (!BASE_URL) { setConnection(false); return; }
     let t = Math.abs(throttle) < DEAD_ZONE ? 0 : throttle;
     let s = Math.abs(steering) < DEAD_ZONE ? 0 : steering;
     let left = clamp(t + s, -1, 1);
@@ -106,7 +116,7 @@
     lastSent = command;
     lastSendAt = now;
 
-    fetch(`/control?left=${l}&right=${r}`, { method: "GET", cache: "no-store" })
+    fetch(controlUrl(l, r), { method: "GET", cache: "no-store" })
       .then(response => { if (!response.ok) throw new Error("HTTP " + response.status); setConnection(true); })
       .catch(() => setConnection(false))
       .finally(() => { requestBusy = false; });
@@ -167,18 +177,40 @@
   attachStick("throttleStick", "throttleKnob", "y");
   attachStick("steeringStick", "steeringKnob", "x");
 
+  // Robot address plumbing for the Android app shell.
+  window.__getRobotBase = () => BASE_URL;
+  window.__setRobotBase = url => {
+    BASE_URL = url || "";
+    try { if (window.Android && window.Android.saveBaseUrl) window.Android.saveBaseUrl(BASE_URL); } catch (_) {}
+    lastSent = "";
+    updateDrive(true);
+  };
+  window.__stopDrive = () => {
+    throttle = 0;
+    steering = 0;
+    if (lastSent !== "0,0") updateDrive(true);
+  };
+
+  document.getElementById("menuButton").addEventListener("click", () => {
+    try { if (window.Android && window.Android.editBaseUrl) window.Android.editBaseUrl(); } catch (_) {}
+  });
+
   // Send a stop command when the page is hidden or the browser is closed.
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
       throttle = 0; steering = 0;
-      fetch("/control?left=0&right=0", { method: "GET", cache: "no-store", keepalive: true }).catch(() => {});
+      fetch(controlUrl(0, 0), { method: "GET", cache: "no-store", keepalive: true }).catch(() => {});
     }
   });
 
-  // Check that the ESP8266 is reachable.
-  fetch("/control?left=0&right=0", { cache: "no-store" })
-    .then(r => { if (!r.ok) throw new Error(); setConnection(true); })
-    .catch(() => setConnection(false));
+  if (!BASE_URL && window.Android && window.Android.editBaseUrl) {
+    window.Android.editBaseUrl();
+  } else {
+    // Check that the ESP8266 is reachable.
+    fetch(controlUrl(0, 0), { cache: "no-store" })
+      .then(r => { if (!r.ok) throw new Error(); setConnection(true); })
+      .catch(() => setConnection(false));
+  }
 })();
 </script>
 </body>
