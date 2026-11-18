@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Robot Controller</title>
+<style>
+  :root { color-scheme: dark; --green:#20d7a0; --bg:#030807; --glass:#06201d; }
+  * { box-sizing:border-box; }
+  html,body { width:100%;height:100%;margin:0;overflow:hidden;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none;user-select:none; }
+  .app { height:100%;min-height:420px;position:relative;padding:18px 22px 26px;color:#fff; }
+  header { display:flex;align-items:center;justify-content:space-between;gap:12px; }
+  .status { display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:24px;background:#06201d;font-weight:700;letter-spacing:.04em; }
+  .dot { width:9px;height:9px;border-radius:50%;background:#f05d70;box-shadow:0 0 12px #f05d70; }
+  .status.connected .dot { background:var(--green);box-shadow:0 0 12px var(--green); }
+  .tools { display:flex;gap:10px;align-items:center; }
+  .tool { width:52px;height:52px;border:0;border-radius:50%;background:#06201d;color:#fff;font-size:22px;display:grid;place-items:center; }
+  .tool:active { background:#0b3a31; }
+  .controls { position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 5.7%;pointer-events:none; }
+  .stick-wrap { width:min(27vw, min(48vh,340px));aspect-ratio:1;position:relative;pointer-events:auto; }
+  .stick { width:100%;height:100%;border-radius:50%;position:relative;background:radial-gradient(circle at 50% 50%,#020605 0 55%,#06251e 69%,#0bb88a 100%);box-shadow:inset 0 0 26px #000,0 0 18px #001b15;touch-action:none; }
+  .stick.right { background:radial-gradient(circle at 50% 50%,#020605 0 55%,#06251e 69%,#0bb88a 100%); }
+  .knob { position:absolute;left:50%;top:50%;width:28%;height:28%;border-radius:50%;background:#fff;color:#07120f;display:grid;place-items:center;transform:translate(-50%,-50%);box-shadow:0 3px 16px #0009;font-size:clamp(24px,4vw,42px);font-weight:800; }
+  .knob span { line-height:1; }
+  .hint { position:absolute;bottom:-30px;width:100%;text-align:center;color:#71958b;font-size:11px;letter-spacing:.12em; }
+  .footer { position:absolute;bottom:12px;left:0;right:0;text-align:center;color:#41665c;font-size:11px; }
+  @media (max-width:600px) {
+    .app { padding:12px; }
+    .tool { width:42px;height:42px; }
+    .status { padding:10px 13px;font-size:13px; }
+    .controls { padding:0 3%; }
+    .stick-wrap { width:39vw; }
+    .hint { font-size:9px;bottom:-23px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="tools">
+      <button class="tool" aria-label="Horn" title="Horn">♬</button>
+      <button class="tool" aria-label="Lights" title="Lights">◉</button>
+      <button class="tool" aria-label="Parking brake" title="Parking brake">P</button>
+    </div>
+    <div id="status" class="status"><i class="dot"></i><span id="statusText">CONNECTING</span></div>
+    <div class="tools">
+      <button class="tool" aria-label="Menu" title="Menu">☰</button>
+    </div>
+  </header>
+
+  <main class="controls">
+    <div class="stick-wrap">
+      <div class="stick" id="throttleStick" aria-label="Throttle joystick">
+        <div class="knob" id="throttleKnob"><span>↕</span></div>
+      </div>
+      <div class="hint">THROTTLE · FORWARD / REVERSE</div>
+    </div>
+    <div class="stick-wrap">
+      <div class="stick right" id="steeringStick" aria-label="Steering joystick">
+        <div class="knob" id="steeringKnob"><span style="color:#20b98e">‹ ›</span></div>
+      </div>
+      <div class="hint">STEERING · LEFT / RIGHT</div>
+    </div>
+  </main>
+  <div class="footer">Move farther from the center for more speed · Release to stop</div>
+</div>
+
+<script>
+(() => {
+  // The ESP8266 must implement GET /control?left=-100..100&right=-100..100.
+  const DEAD_ZONE = 0.06;
+  const SEND_INTERVAL_MS = 60;
+  const MAX_STICK_TRAVEL = 0.34; // fraction of joystick diameter
+  let throttle = 0; // -1 reverse, +1 forward
+  let steering = 0; // -1 left, +1 right
+  let lastSent = "";
+  let lastSendAt = 0;
+  let requestBusy = false;
+  let activePointers = new Map();
+
+  const status = document.getElementById("status");
+  const statusText = document.getElementById("statusText");
+
+  function setConnection(ok) {
+    status.classList.toggle("connected", ok);
+    statusText.textContent = ok ? "CONNECTED" : "NOT CONNECTED";
+  }
+
+  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+  function updateDrive(force = false) {
+    // Differential-drive mixing. Throttle displacement sets speed;
+    // steering changes the relative speed of the two motors.
+    let t = Math.abs(throttle) < DEAD_ZONE ? 0 : throttle;
+    let s = Math.abs(steering) < DEAD_ZONE ? 0 : steering;
+    let left = clamp(t + s, -1, 1);
+    let right = clamp(t - s, -1, 1);
+    const l = Math.round(left * 100);
+    const r = Math.round(right * 100);
+    const command = `${l},${r}`;
+    const now = Date.now();
+
+    if (!force && (command === lastSent || now - lastSendAt < SEND_INTERVAL_MS)) return;
+    if (requestBusy) return;
+    requestBusy = true;
+    lastSent = command;
+    lastSendAt = now;
+
+    fetch(`/control?left=${l}&right=${r}`, { method: "GET", cache: "no-store" })
+      .then(response => { if (!response.ok) throw new Error("HTTP " + response.status); setConnection(true); })
+      .catch(() => setConnection(false))
+      .finally(() => { requestBusy = false; });
+  }
+
+  function attachStick(stickId, knobId, axis) {
+    const stick = document.getElementById(stickId);
+    const knob = document.getElementById(knobId);
+    let pointerId = null;
+
+    function move(event) {
+      if (pointerId !== event.pointerId) return;
+      const rect = stick.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const limit = rect.width * MAX_STICK_TRAVEL;
+      let dx = event.clientX - cx;
+      let dy = event.clientY - cy;
+
+      if (axis === "y") dx = 0;
+      if (axis === "x") dy = 0;
+      const distance = Math.hypot(dx, dy);
+      if (distance > limit) {
+        const scale = limit / distance;
+        dx *= scale; dy *= scale;
+      }
+      knob.style.left = `${50 + dx / rect.width * 100}%`;
+      knob.style.top = `${50 + dy / rect.height * 100}%`;
+
+      if (axis === "y") throttle = clamp(-dy / limit, -1, 1);
+      else steering = clamp(dx / limit, -1, 1);
+      updateDrive();
+    }
+
+    function release(event) {
+      if (pointerId !== event.pointerId) return;
+      pointerId = null;
+      try { stick.releasePointerCapture(event.pointerId); } catch (_) {}
+      knob.style.left = "50%";
+      knob.style.top = "50%";
+      if (axis === "y") throttle = 0;
+      else steering = 0;
+      updateDrive(true);
+    }
+
+    stick.addEventListener("pointerdown", event => {
+      if (pointerId !== null) return;
+      pointerId = event.pointerId;
+      stick.setPointerCapture(pointerId);
+      move(event);
+    });
+    stick.addEventListener("pointermove", move);
+    stick.addEventListener("pointerup", release);
+    stick.addEventListener("pointercancel", release);
+    stick.addEventListener("lostpointercapture", release);
+  }
+
+  attachStick("throttleStick", "throttleKnob", "y");
+  attachStick("steeringStick", "steeringKnob", "x");
+
+  // Send a stop command when the page is hidden or the browser is closed.
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      throttle = 0; steering = 0;
+      fetch("/control?left=0&right=0", { method: "GET", cache: "no-store", keepalive: true }).catch(() => {});
+    }
+  });
+
+  // Check that the ESP8266 is reachable.
+  fetch("/control?left=0&right=0", { cache: "no-store" })
+    .then(r => { if (!r.ok) throw new Error(); setConnection(true); })
+    .catch(() => setConnection(false));
+})();
+</script>
+</body>
+</html>
