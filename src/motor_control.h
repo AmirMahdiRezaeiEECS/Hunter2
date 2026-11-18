@@ -5,6 +5,7 @@
 class MotorController {
 public:
   void begin();
+  void setSpeed(int leftPercent, int rightPercent);
   void executeCommand(int command);
   void stop();
 

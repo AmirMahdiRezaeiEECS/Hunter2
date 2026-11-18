@@ -29,22 +29,34 @@ void MotorController::stop() {
   setMotorSpeeds(0, LOW, LOW, 0, LOW, LOW);
 }
 
+void MotorController::setSpeed(int leftPercent, int rightPercent) {
+  leftPercent = constrain(leftPercent, -100, 100);
+  rightPercent = constrain(rightPercent, -100, 100);
+
+  setMotorSpeeds(map(abs(leftPercent), 0, 100, 0, MAX_MOTOR_SPEED),
+                 leftPercent > 0 ? HIGH : LOW,
+                 leftPercent < 0 ? HIGH : LOW,
+                 map(abs(rightPercent), 0, 100, 0, MAX_MOTOR_SPEED),
+                 rightPercent > 0 ? HIGH : LOW,
+                 rightPercent < 0 ? HIGH : LOW);
+}
+
 void MotorController::executeCommand(int command) {
   switch (command) {
     case 1: // Turn left
-      setMotorSpeeds(90, LOW, LOW, 100, HIGH, LOW);
+      setSpeed(0, 100);
       break;
 
     case 2: // Forward
-      setMotorSpeeds(100, HIGH, LOW, 100, HIGH, LOW);
+      setSpeed(100, 100);
       break;
 
     case 3: // Turn right
-      setMotorSpeeds(100, HIGH, LOW, 90, LOW, LOW);
+      setSpeed(100, 0);
       break;
 
     case 4: // Sharp left
-      setMotorSpeeds(90, LOW, HIGH, 90, HIGH, LOW);
+      setSpeed(-90, 90);
       break;
 
     case 5: // Stop
@@ -52,19 +64,19 @@ void MotorController::executeCommand(int command) {
       break;
 
     case 6: // Sharp right
-      setMotorSpeeds(90, HIGH, LOW, 90, LOW, HIGH);
+      setSpeed(90, -90);
       break;
 
     case 7: // Reverse-left
-      setMotorSpeeds(90, LOW, LOW, 100, LOW, HIGH);
+      setSpeed(0, -100);
       break;
 
     case 8: // Reverse
-      setMotorSpeeds(90, LOW, HIGH, 90, LOW, HIGH);
+      setSpeed(-90, -90);
       break;
 
     case 9: // Reverse-right
-      setMotorSpeeds(100, LOW, HIGH, 90, LOW, LOW);
+      setSpeed(-100, 0);
       break;
 
     default:

@@ -8,6 +8,7 @@ WebInterface::WebInterface(ESP8266WebServer& serverRef,
 void WebInterface::begin() {
   server.on("/", [this]() { handleRoot(); });
   server.on("/car", [this]() { handleCar(); });
+  server.on("/control", [this]() { handleControl(); });
   server.onNotFound([this]() { handleNotFound(); });
 }
 
@@ -35,6 +36,25 @@ void WebInterface::handleCar() {
   lights.setRearLight(reverse);
 
   server.send(200, "text/html", makeControlPage());
+}
+
+// Called by the Robot Controller app at ~16 Hz with differential-drive
+// percentages in the -100..100 range (negative = reverse).
+void WebInterface::handleControl() {
+  const int left = constrain(server.arg("left").toInt(), -100, 100);
+  const int right = constrain(server.arg("right").toInt(), -100, 100);
+
+  motors.setSpeed(left, right);
+
+  // Pivot turns light the indicators; a full stop clears them.
+  const bool leftIndicator = left < 0 && right > 0;
+  const bool rightIndicator = right < 0 && left > 0;
+  const bool reverse = left < 0 && right < 0;
+
+  lights.setIndicators(leftIndicator, rightIndicator);
+  lights.setRearLight(reverse);
+
+  server.send(200, "text/plain", "OK");
 }
 
 String WebInterface::makeControlPage() {

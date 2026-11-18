@@ -2,6 +2,9 @@
 
 #include <Arduino.h>
 
+// Full PWM duty for a 100% drive command (ESP8266 analogWrite range)
+constexpr uint8_t MAX_MOTOR_SPEED = 255;
+
 // Motor driver (L298N)
 constexpr uint8_t MOTOR_A_PWM = D1;
 constexpr uint8_t MOTOR_A_IN1 = D2;
