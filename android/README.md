@@ -37,9 +37,9 @@ Protect warns because the app is not from the Play Store, choose install anyway.
    robot's own access point).
 3. To change the address later, tap the **☰** button in the top-right corner.
 
-> Note: `nodemcu_car.ino` in this repository only implements the older
-> `/car?a=1..9` button interface. The controller needs the `/control?left=&right=`
-> endpoint on the ESP8266 firmware side.
+> Note: the current `Hunter2.ino` firmware implements `/control?left=&right=`.
+> The legacy `history/nodemcu_car.ino` sketch only implements the older
+> `/car?a=1..9` button interface.
 
 ## Rebuilding the APK yourself
 

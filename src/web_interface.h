@@ -19,6 +19,7 @@ private:
 
   void handleRoot();
   void handleCar();
+  void handleControl();
   void handleNotFound();
   String makeControlPage();
 };
