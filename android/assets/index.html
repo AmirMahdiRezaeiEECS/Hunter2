@@ -5,212 +5,154 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>Robot Controller</title>
 <style>
-  :root { color-scheme: dark; --green:#20d7a0; --bg:#030807; --glass:#06201d; }
+  :root {
+    color-scheme: dark;
+    --red:#ff1525;
+    --red-hot:#ff4639;
+    --red-dim:#71101a;
+    --orange:#ff7b16;
+    --ink:#030304;
+    --panel:#090a0d;
+    --line:#25272d;
+    --muted:#7e828c;
+  }
   * { box-sizing:border-box; }
-  html,body { width:100%;height:100%;margin:0;overflow:hidden;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none;user-select:none; }
-  .app { height:100%;min-height:420px;position:relative;padding:18px 22px 26px;color:#fff; }
-  header { display:flex;align-items:center;justify-content:space-between;gap:12px; }
-  .status { display:flex;align-items:center;gap:10px;padding:12px 18px;border-radius:24px;background:#06201d;font-weight:700;letter-spacing:.04em; }
-  .dot { width:9px;height:9px;border-radius:50%;background:#f05d70;box-shadow:0 0 12px #f05d70; }
-  .status.connected .dot { background:var(--green);box-shadow:0 0 12px var(--green); }
-  .tools { display:flex;gap:10px;align-items:center; }
-  .tool { width:52px;height:52px;border:0;border-radius:50%;background:#06201d;color:#fff;font-size:22px;display:grid;place-items:center; }
-  .tool:active { background:#0b3a31; }
-  .controls { position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 5.7%;pointer-events:none; }
-  .stick-wrap { width:min(27vw, min(48vh,340px));aspect-ratio:1;position:relative;pointer-events:auto; }
-  .stick { width:100%;height:100%;border-radius:50%;position:relative;background:radial-gradient(circle at 50% 50%,#020605 0 55%,#06251e 69%,#0bb88a 100%);box-shadow:inset 0 0 26px #000,0 0 18px #001b15;touch-action:none; }
-  .stick.right { background:radial-gradient(circle at 50% 50%,#020605 0 55%,#06251e 69%,#0bb88a 100%); }
-  .knob { position:absolute;left:50%;top:50%;width:28%;height:28%;border-radius:50%;background:#fff;color:#07120f;display:grid;place-items:center;transform:translate(-50%,-50%);box-shadow:0 3px 16px #0009;font-size:clamp(24px,4vw,42px);font-weight:800; }
-  .knob span { line-height:1; }
-  .hint { position:absolute;bottom:-30px;width:100%;text-align:center;color:#71958b;font-size:11px;letter-spacing:.12em; }
-  .footer { position:absolute;bottom:12px;left:0;right:0;text-align:center;color:#41665c;font-size:11px; }
-  @media (max-width:600px) {
-    .app { padding:12px; }
-    .tool { width:42px;height:42px; }
-    .status { padding:10px 13px;font-size:13px; }
-    .controls { padding:0 3%; }
-    .stick-wrap { width:39vw; }
-    .hint { font-size:9px;bottom:-23px; }
+  html,body { width:100%;height:100%;margin:0;overflow:hidden;background:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;touch-action:none;user-select:none; }
+  body { background:radial-gradient(ellipse at 50% 46%,#160506 0%,#050506 43%,#010101 100%); }
+  body:before,body:after { content:"";position:fixed;inset:0;pointer-events:none; }
+  body:before { opacity:.33;background:linear-gradient(135deg,transparent 0 34%,#4b0b11 34.15%,transparent 34.35% 65.6%,#4b0b11 65.8%,transparent 66%);clip-path:polygon(0 0,100% 0,100% 100%,0 100%); }
+  body:after { background:radial-gradient(circle at 50% 48%,transparent 0 37%,rgba(0,0,0,.4) 75%,rgba(0,0,0,.85) 100%); }
+  button { font:inherit; }
+  .app { position:relative;height:100%;min-height:360px;padding:20px 5.7% 18px;color:#fff;isolation:isolate; }
+  .topbar { position:relative;z-index:3;display:grid;grid-template-columns:1fr auto 1fr;align-items:start; }
+  .topbar .right { justify-self:end; }
+  .icon-button { width:56px;height:56px;border:1px solid #292c32;border-radius:50%;background:linear-gradient(145deg,#111318,#060709);color:#e9eaed;display:grid;place-items:center;box-shadow:0 8px 18px #0009,inset 0 0 0 1px #000;cursor:pointer; }
+  .icon-button:active { transform:scale(.95);border-color:var(--red);color:#fff; }
+  .icon { width:23px;height:23px;display:block; }
+  .connection { min-width:174px;margin-top:0;padding:11px 22px 12px;border:1px solid #391016;border-radius:0 0 36px 36px;background:linear-gradient(180deg,#10070a,#070506);box-shadow:0 7px 22px #d00b1c33,inset 0 -2px 0 #a50c1b;display:flex;justify-content:center;align-items:center;gap:12px;font-size:16px;font-weight:700;letter-spacing:.02em; }
+  .connection:before { content:"";position:absolute;top:0;width:150px;height:2px;background:var(--red);box-shadow:0 0 15px var(--red); }
+  .dot { width:12px;height:12px;border-radius:50%;background:var(--red);box-shadow:0 0 12px 3px #ff172766; }
+  .connection.offline { color:#8b8d93;border-color:#25272d;box-shadow:none; }
+  .connection.offline:before,.connection.offline .dot { background:#64666c;box-shadow:none; }
+  .dashboard { position:absolute;inset:0;display:grid;grid-template-columns:1fr minmax(235px,28vw) 1fr;align-items:center;gap:5vw;padding:38px 7.5% 0; }
+  .joystick-wrap { min-width:0;aspect-ratio:1;position:relative;display:grid;place-items:center; }
+  .joystick { width:100%;height:100%;position:relative;border-radius:50%;touch-action:none;cursor:grab;background:radial-gradient(circle at center,#040506 0 48%,#08090b 49% 68%,#15171b 69% 70%,transparent 70%),conic-gradient(from 212deg,transparent 0 10%,#17191d 10% 14%,var(--red) 14% 19%,transparent 19% 50%,#23252a 50% 53%,var(--red) 53% 57%,transparent 57% 100%);box-shadow:inset 0 0 0 1px #35373d,inset 0 0 32px #000,0 0 30px #000; }
+  .joystick:before { content:"";position:absolute;inset:7%;border-radius:50%;border:1px solid #292c32;box-shadow:0 0 0 9px #060708,0 0 0 10px #202227; }
+  .joystick:after { content:"";position:absolute;inset:13%;border-radius:50%;border:1px solid #1d1f24;opacity:.9; }
+  .joystick.right { background:radial-gradient(circle at center,#040506 0 48%,#08090b 49% 68%,#15171b 69% 70%,transparent 70%),conic-gradient(from 26deg,transparent 0 10%,#17191d 10% 14%,var(--red) 14% 19%,transparent 19% 50%,#23252a 50% 53%,var(--red) 53% 57%,transparent 57% 100%); }
+  .knob { position:absolute;z-index:2;left:50%;top:50%;width:29%;height:29%;border-radius:50%;transform:translate(-50%,-50%);display:grid;place-items:center;background:linear-gradient(145deg,#fff 0%,#e4e5e8 48%,#aeb1b7 100%);color:#0c0d10;box-shadow:0 5px 14px #000,0 0 0 1px #fff8,0 0 28px #fff3;transition:left .08s linear,top .08s linear; }
+  .knob span { font-size:clamp(21px,3vw,38px);line-height:1;font-weight:800;letter-spacing:-.15em;transform:translateX(-.08em); }
+  .knob:after { content:"";position:absolute;inset:14%;border-radius:50%;border:1px solid #a1a4aa88; }
+  .label { position:absolute;bottom:-29px;left:0;right:0;text-align:center;color:#9b9da4;font-size:11px;font-weight:700;letter-spacing:.25em; }
+  .gauge { align-self:center;position:relative;aspect-ratio:1;display:grid;place-items:center;min-width:0; }
+  .gauge:before { content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 220deg,#6b080f 0 13%,var(--red) 13% 32%,var(--orange) 32% 49%,#f12c17 49% 52%,transparent 52% 100%);mask:radial-gradient(farthest-side,transparent calc(100% - 17px),#000 calc(100% - 16px));filter:drop-shadow(0 0 9px #ff1722);transform:rotate(2deg); }
+  .gauge:after { content:"";position:absolute;inset:16%;border-radius:50%;border:1px solid #1f2126;box-shadow:inset 0 0 45px #000; }
+  .gauge-inner { position:relative;z-index:1;text-align:center; }
+  .gauge-title { margin-bottom:9px;font-size:15px;font-weight:700;letter-spacing:.45em;color:#a9aab0; }
+  .speed { font-size:clamp(64px,8vw,118px);font-style:italic;font-weight:900;line-height:.83;letter-spacing:-.08em;text-shadow:0 0 18px #fff3; }
+  .unit { margin-top:12px;font-size:18px;font-style:italic;color:#888a91; }
+  .speed-mark { margin:27px auto 0;width:72px;height:14px;transform:skewX(-28deg);background:repeating-linear-gradient(90deg,var(--red) 0 18px,transparent 18px 24px);filter:drop-shadow(0 0 5px var(--red)); }
+  .footer { position:absolute;z-index:2;bottom:10px;left:0;right:0;text-align:center;color:#676a72;font-size:10px;letter-spacing:.08em; }
+  @media (max-width:760px) {
+    .app { padding:12px 3%; }
+    .icon-button { width:44px;height:44px; }
+    .connection { min-width:136px;padding:9px 15px;font-size:12px; }
+    .dashboard { grid-template-columns:1fr 1fr;gap:5vw;padding:18px 3% 6px;align-items:end; }
+    .gauge { position:absolute;top:17%;left:50%;width:30%;transform:translateX(-50%); }
+    .joystick-wrap { width:min(38vw,42vh); }
+    .dashboard .left { justify-self:start; }
+    .dashboard .right { justify-self:end; }
+    .label { bottom:-22px;font-size:8px;letter-spacing:.13em; }
+    .footer { display:none; }
   }
 </style>
 </head>
 <body>
 <div class="app">
-  <header>
-    <div class="tools">
-      <button class="tool" aria-label="Horn" title="Horn">&#9834;</button>
-      <button class="tool" aria-label="Lights" title="Lights">&#9673;</button>
-      <button class="tool" aria-label="Parking brake" title="Parking brake">P</button>
-    </div>
-    <div id="status" class="status"><i class="dot"></i><span id="statusText">CONNECTING</span></div>
-    <div class="tools">
-      <button class="tool" id="menuButton" aria-label="Menu" title="Menu">&#9776;</button>
-    </div>
+  <header class="topbar">
+    <button class="icon-button" aria-label="Settings" title="Settings">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/><circle cx="12" cy="12" r="4.2"/></svg>
+    </button>
+    <div id="status" class="connection"><i class="dot"></i><span id="statusText">CONNECTED</span></div>
+    <button id="menuButton" class="icon-button right" aria-label="Menu" title="Robot address">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
   </header>
 
-  <main class="controls">
-    <div class="stick-wrap">
-      <div class="stick" id="throttleStick" aria-label="Throttle joystick">
-        <div class="knob" id="throttleKnob"><span>&#8597;</span></div>
-      </div>
-      <div class="hint">THROTTLE &middot; FORWARD / REVERSE</div>
+  <main class="dashboard">
+    <div class="joystick-wrap left">
+      <div class="joystick" id="throttleStick" aria-label="Throttle joystick"><div class="knob" id="throttleKnob"><span>↕</span></div></div>
+      <div class="label">THROTTLE · FWD / REV</div>
     </div>
-    <div class="stick-wrap">
-      <div class="stick right" id="steeringStick" aria-label="Steering joystick">
-        <div class="knob" id="steeringKnob"><span style="color:#20b98e">&#8249; &#8250;</span></div>
-      </div>
-      <div class="hint">STEERING &middot; LEFT / RIGHT</div>
+    <div class="gauge" aria-label="Current speed"><div class="gauge-inner"><div class="gauge-title">SPEED</div><div class="speed" id="speedValue">0</div><div class="unit">km/h</div><div class="speed-mark"></div></div></div>
+    <div class="joystick-wrap right">
+      <div class="joystick right" id="steeringStick" aria-label="Steering joystick"><div class="knob" id="steeringKnob"><span>‹ ›</span></div></div>
+      <div class="label">STEERING · L / R</div>
     </div>
   </main>
-  <div class="footer">Move farther from the center for more speed &middot; Release to stop</div>
+  <div class="footer">PUSH AND HOLD TO DRIVE · RELEASE BOTH STICKS TO STOP</div>
 </div>
-
 <script>
 (() => {
-  // The ESP8266 must implement GET /control?left=-100..100&right=-100..100.
   const DEAD_ZONE = 0.06;
   const SEND_INTERVAL_MS = 60;
-  const MAX_STICK_TRAVEL = 0.34; // fraction of joystick diameter
+  const MAX_STICK_TRAVEL = 0.34;
   let BASE_URL = "";
-  let throttle = 0; // -1 reverse, +1 forward
-  let steering = 0; // -1 left, +1 right
+  let throttle = 0;
+  let steering = 0;
   let lastSent = "";
   let lastSendAt = 0;
   let requestBusy = false;
-  let activePointers = new Map();
-
-  try {
-    if (window.Android && window.Android.getBaseUrl) BASE_URL = window.Android.getBaseUrl() || "";
-  } catch (_) {}
-
+  try { if (window.Android && window.Android.getBaseUrl) BASE_URL = window.Android.getBaseUrl() || ""; } catch (_) {}
   const status = document.getElementById("status");
   const statusText = document.getElementById("statusText");
-
-  function setConnection(ok) {
-    status.classList.toggle("connected", ok);
-    statusText.textContent = ok ? "CONNECTED" : "NOT CONNECTED";
-  }
-
+  const speedValue = document.getElementById("speedValue");
+  function setConnection(ok) { status.classList.toggle("offline", !ok); statusText.textContent = ok ? "CONNECTED" : "OFFLINE"; }
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-
-  function controlUrl(l, r) {
-    return `${BASE_URL}/control?left=${l}&right=${r}`;
-  }
-
+  function controlUrl(l, r) { return `${BASE_URL}/control?left=${l}&right=${r}`; }
+  function updateSpeed() { speedValue.textContent = String(Math.round(Math.abs(throttle) * 42)); }
   function updateDrive(force = false) {
-    // Differential-drive mixing. Throttle displacement sets speed;
-    // steering changes the relative speed of the two motors.
+    updateSpeed();
     if (!BASE_URL) { setConnection(false); return; }
-    let t = Math.abs(throttle) < DEAD_ZONE ? 0 : throttle;
-    let s = Math.abs(steering) < DEAD_ZONE ? 0 : steering;
-    let left = clamp(t + s, -1, 1);
-    let right = clamp(t - s, -1, 1);
-    const l = Math.round(left * 100);
-    const r = Math.round(right * 100);
-    const command = `${l},${r}`;
-    const now = Date.now();
-
+    const t = Math.abs(throttle) < DEAD_ZONE ? 0 : throttle;
+    const s = Math.abs(steering) < DEAD_ZONE ? 0 : steering;
+    const l = Math.round(clamp(t + s, -1, 1) * 100);
+    const r = Math.round(clamp(t - s, -1, 1) * 100);
+    const command = `${l},${r}`; const now = Date.now();
     if (!force && (command === lastSent || now - lastSendAt < SEND_INTERVAL_MS)) return;
     if (requestBusy) return;
-    requestBusy = true;
-    lastSent = command;
-    lastSendAt = now;
-
-    fetch(controlUrl(l, r), { method: "GET", cache: "no-store" })
+    requestBusy = true; lastSent = command; lastSendAt = now;
+    fetch(controlUrl(l, r), { method:"GET", cache:"no-store" })
       .then(response => { if (!response.ok) throw new Error("HTTP " + response.status); setConnection(true); })
-      .catch(() => setConnection(false))
-      .finally(() => { requestBusy = false; });
+      .catch(() => setConnection(false)).finally(() => { requestBusy = false; });
   }
-
   function attachStick(stickId, knobId, axis) {
-    const stick = document.getElementById(stickId);
-    const knob = document.getElementById(knobId);
-    let pointerId = null;
-
+    const stick = document.getElementById(stickId), knob = document.getElementById(knobId); let pointerId = null;
     function move(event) {
       if (pointerId !== event.pointerId) return;
-      const rect = stick.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const limit = rect.width * MAX_STICK_TRAVEL;
-      let dx = event.clientX - cx;
-      let dy = event.clientY - cy;
-
-      if (axis === "y") dx = 0;
-      if (axis === "x") dy = 0;
-      const distance = Math.hypot(dx, dy);
-      if (distance > limit) {
-        const scale = limit / distance;
-        dx *= scale; dy *= scale;
-      }
-      knob.style.left = `${50 + dx / rect.width * 100}%`;
-      knob.style.top = `${50 + dy / rect.height * 100}%`;
-
-      if (axis === "y") throttle = clamp(-dy / limit, -1, 1);
-      else steering = clamp(dx / limit, -1, 1);
-      updateDrive();
+      const rect = stick.getBoundingClientRect(), cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2, limit = rect.width * MAX_STICK_TRAVEL;
+      let dx = event.clientX - cx, dy = event.clientY - cy;
+      if (axis === "y") dx = 0; if (axis === "x") dy = 0;
+      const distance = Math.hypot(dx, dy); if (distance > limit) { const scale = limit / distance; dx *= scale; dy *= scale; }
+      knob.style.left = `${50 + dx / rect.width * 100}%`; knob.style.top = `${50 + dy / rect.height * 100}%`;
+      if (axis === "y") throttle = clamp(-dy / limit, -1, 1); else steering = clamp(dx / limit, -1, 1); updateDrive();
     }
-
     function release(event) {
-      if (pointerId !== event.pointerId) return;
-      pointerId = null;
+      if (pointerId !== event.pointerId) return; pointerId = null;
       try { stick.releasePointerCapture(event.pointerId); } catch (_) {}
-      knob.style.left = "50%";
-      knob.style.top = "50%";
-      if (axis === "y") throttle = 0;
-      else steering = 0;
-      updateDrive(true);
+      knob.style.left = "50%"; knob.style.top = "50%";
+      if (axis === "y") throttle = 0; else steering = 0; updateDrive(true);
     }
-
-    stick.addEventListener("pointerdown", event => {
-      if (pointerId !== null) return;
-      pointerId = event.pointerId;
-      stick.setPointerCapture(pointerId);
-      move(event);
-    });
-    stick.addEventListener("pointermove", move);
-    stick.addEventListener("pointerup", release);
-    stick.addEventListener("pointercancel", release);
-    stick.addEventListener("lostpointercapture", release);
+    stick.addEventListener("pointerdown", event => { if (pointerId !== null) return; pointerId = event.pointerId; stick.setPointerCapture(pointerId); move(event); });
+    stick.addEventListener("pointermove", move); stick.addEventListener("pointerup", release); stick.addEventListener("pointercancel", release); stick.addEventListener("lostpointercapture", release);
   }
-
-  attachStick("throttleStick", "throttleKnob", "y");
-  attachStick("steeringStick", "steeringKnob", "x");
-
-  // Robot address plumbing for the Android app shell.
+  attachStick("throttleStick", "throttleKnob", "y"); attachStick("steeringStick", "steeringKnob", "x");
   window.__getRobotBase = () => BASE_URL;
-  window.__setRobotBase = url => {
-    BASE_URL = url || "";
-    try { if (window.Android && window.Android.saveBaseUrl) window.Android.saveBaseUrl(BASE_URL); } catch (_) {}
-    lastSent = "";
-    updateDrive(true);
-  };
-  window.__stopDrive = () => {
-    throttle = 0;
-    steering = 0;
-    if (lastSent !== "0,0") updateDrive(true);
-  };
-
-  document.getElementById("menuButton").addEventListener("click", () => {
-    try { if (window.Android && window.Android.editBaseUrl) window.Android.editBaseUrl(); } catch (_) {}
-  });
-
-  // Send a stop command when the page is hidden or the browser is closed.
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden) {
-      throttle = 0; steering = 0;
-      fetch(controlUrl(0, 0), { method: "GET", cache: "no-store", keepalive: true }).catch(() => {});
-    }
-  });
-
-  if (!BASE_URL && window.Android && window.Android.editBaseUrl) {
-    window.Android.editBaseUrl();
-  } else {
-    // Check that the ESP8266 is reachable.
-    fetch(controlUrl(0, 0), { cache: "no-store" })
-      .then(r => { if (!r.ok) throw new Error(); setConnection(true); })
-      .catch(() => setConnection(false));
-  }
+  window.__setRobotBase = url => { BASE_URL = url || ""; try { if (window.Android && window.Android.saveBaseUrl) window.Android.saveBaseUrl(BASE_URL); } catch (_) {} lastSent = ""; updateDrive(true); };
+  window.__stopDrive = () => { throttle = 0; steering = 0; updateSpeed(); if (lastSent !== "0,0") updateDrive(true); };
+  document.getElementById("menuButton").addEventListener("click", () => { try { if (window.Android && window.Android.editBaseUrl) window.Android.editBaseUrl(); } catch (_) {} });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) { throttle = 0; steering = 0; fetch(controlUrl(0, 0), { method:"GET", cache:"no-store", keepalive:true }).catch(() => {}); } });
+  if (!BASE_URL && window.Android && window.Android.editBaseUrl) window.Android.editBaseUrl(); else fetch(controlUrl(0, 0), { cache:"no-store" }).then(r => { if (!r.ok) throw new Error(); setConnection(true); }).catch(() => setConnection(false));
 })();
 </script>
 </body>
