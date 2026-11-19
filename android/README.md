@@ -52,6 +52,14 @@ cd android
 bash build-apk.sh     # produces dist/robot-controller-debug.apk
 ```
 
+### Controller UI
+
+The left stick is the throttle (up = forward, down = reverse) and the right stick steers.
+The centre gauge shows the robot's speed from **-100 to +100** (0 at the top; forward fills
+the right side, reverse the left). The accent colour of the whole UI (gauge, stick rings,
+frame lines, status dot) shifts from green at 0 to reddish-orange at full speed. The UI is
+drawn on a fixed 1280x576 stage that is scaled to fit any landscape screen.
+
 The controller UI lives in `android/assets/index.html`. It is the same file as the
 browser version, plus three small additions: the robot base URL is read from/saved to
 native preferences via a tiny JS bridge (`window.Android`), the ☰ button opens the
