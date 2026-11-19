@@ -2,157 +2,278 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Robot Controller</title>
 <style>
-  :root {
-    color-scheme: dark;
-    --red:#ff1525;
-    --red-hot:#ff4639;
-    --red-dim:#71101a;
-    --orange:#ff7b16;
-    --ink:#030304;
-    --panel:#090a0d;
-    --line:#25272d;
-    --muted:#7e828c;
-  }
-  * { box-sizing:border-box; }
-  html,body { width:100%;height:100%;margin:0;overflow:hidden;background:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;touch-action:none;user-select:none; }
-  body { background:radial-gradient(ellipse at 50% 46%,#160506 0%,#050506 43%,#010101 100%); }
-  body:before,body:after { content:"";position:fixed;inset:0;pointer-events:none; }
-  body:before { opacity:.33;background:linear-gradient(135deg,transparent 0 34%,#4b0b11 34.15%,transparent 34.35% 65.6%,#4b0b11 65.8%,transparent 66%);clip-path:polygon(0 0,100% 0,100% 100%,0 100%); }
-  body:after { background:radial-gradient(circle at 50% 48%,transparent 0 37%,rgba(0,0,0,.4) 75%,rgba(0,0,0,.85) 100%); }
-  button { font:inherit; }
-  .app { position:relative;height:100%;min-height:360px;padding:20px 5.7% 18px;color:#fff;isolation:isolate; }
-  .topbar { position:relative;z-index:3;display:grid;grid-template-columns:1fr auto 1fr;align-items:start; }
-  .topbar .right { justify-self:end; }
-  .icon-button { width:56px;height:56px;border:1px solid #292c32;border-radius:50%;background:linear-gradient(145deg,#111318,#060709);color:#e9eaed;display:grid;place-items:center;box-shadow:0 8px 18px #0009,inset 0 0 0 1px #000;cursor:pointer; }
-  .icon-button:active { transform:scale(.95);border-color:var(--red);color:#fff; }
-  .icon { width:23px;height:23px;display:block; }
-  .connection { min-width:174px;margin-top:0;padding:11px 22px 12px;border:1px solid #391016;border-radius:0 0 36px 36px;background:linear-gradient(180deg,#10070a,#070506);box-shadow:0 7px 22px #d00b1c33,inset 0 -2px 0 #a50c1b;display:flex;justify-content:center;align-items:center;gap:12px;font-size:16px;font-weight:700;letter-spacing:.02em; }
-  .connection:before { content:"";position:absolute;top:0;width:150px;height:2px;background:var(--red);box-shadow:0 0 15px var(--red); }
-  .dot { width:12px;height:12px;border-radius:50%;background:var(--red);box-shadow:0 0 12px 3px #ff172766; }
-  .connection.offline { color:#8b8d93;border-color:#25272d;box-shadow:none; }
-  .connection.offline:before,.connection.offline .dot { background:#64666c;box-shadow:none; }
-  .dashboard { position:absolute;inset:0;display:grid;grid-template-columns:1fr minmax(235px,28vw) 1fr;align-items:center;gap:5vw;padding:38px 7.5% 0; }
-  .joystick-wrap { min-width:0;aspect-ratio:1;position:relative;display:grid;place-items:center; }
-  .joystick { width:100%;height:100%;position:relative;border-radius:50%;touch-action:none;cursor:grab;background:radial-gradient(circle at center,#040506 0 48%,#08090b 49% 68%,#15171b 69% 70%,transparent 70%),conic-gradient(from 212deg,transparent 0 10%,#17191d 10% 14%,var(--red) 14% 19%,transparent 19% 50%,#23252a 50% 53%,var(--red) 53% 57%,transparent 57% 100%);box-shadow:inset 0 0 0 1px #35373d,inset 0 0 32px #000,0 0 30px #000; }
-  .joystick:before { content:"";position:absolute;inset:7%;border-radius:50%;border:1px solid #292c32;box-shadow:0 0 0 9px #060708,0 0 0 10px #202227; }
-  .joystick:after { content:"";position:absolute;inset:13%;border-radius:50%;border:1px solid #1d1f24;opacity:.9; }
-  .joystick.right { background:radial-gradient(circle at center,#040506 0 48%,#08090b 49% 68%,#15171b 69% 70%,transparent 70%),conic-gradient(from 26deg,transparent 0 10%,#17191d 10% 14%,var(--red) 14% 19%,transparent 19% 50%,#23252a 50% 53%,var(--red) 53% 57%,transparent 57% 100%); }
-  .knob { position:absolute;z-index:2;left:50%;top:50%;width:29%;height:29%;border-radius:50%;transform:translate(-50%,-50%);display:grid;place-items:center;background:linear-gradient(145deg,#fff 0%,#e4e5e8 48%,#aeb1b7 100%);color:#0c0d10;box-shadow:0 5px 14px #000,0 0 0 1px #fff8,0 0 28px #fff3;transition:left .08s linear,top .08s linear; }
-  .knob span { font-size:clamp(21px,3vw,38px);line-height:1;font-weight:800;letter-spacing:-.15em;transform:translateX(-.08em); }
-  .knob:after { content:"";position:absolute;inset:14%;border-radius:50%;border:1px solid #a1a4aa88; }
-  .label { position:absolute;bottom:-29px;left:0;right:0;text-align:center;color:#9b9da4;font-size:11px;font-weight:700;letter-spacing:.25em; }
-  .gauge { align-self:center;position:relative;aspect-ratio:1;display:grid;place-items:center;min-width:0; }
-  .gauge:before { content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 220deg,#6b080f 0 13%,var(--red) 13% 32%,var(--orange) 32% 49%,#f12c17 49% 52%,transparent 52% 100%);mask:radial-gradient(farthest-side,transparent calc(100% - 17px),#000 calc(100% - 16px));filter:drop-shadow(0 0 9px #ff1722);transform:rotate(2deg); }
-  .gauge:after { content:"";position:absolute;inset:16%;border-radius:50%;border:1px solid #1f2126;box-shadow:inset 0 0 45px #000; }
-  .gauge-inner { position:relative;z-index:1;text-align:center; }
-  .gauge-title { margin-bottom:9px;font-size:15px;font-weight:700;letter-spacing:.45em;color:#a9aab0; }
-  .speed { font-size:clamp(64px,8vw,118px);font-style:italic;font-weight:900;line-height:.83;letter-spacing:-.08em;text-shadow:0 0 18px #fff3; }
-  .unit { margin-top:12px;font-size:18px;font-style:italic;color:#888a91; }
-  .speed-mark { margin:27px auto 0;width:72px;height:14px;transform:skewX(-28deg);background:repeating-linear-gradient(90deg,var(--red) 0 18px,transparent 18px 24px);filter:drop-shadow(0 0 5px var(--red)); }
-  .footer { position:absolute;z-index:2;bottom:10px;left:0;right:0;text-align:center;color:#676a72;font-size:10px;letter-spacing:.08em; }
-  @media (max-width:760px) {
-    .app { padding:12px 3%; }
-    .icon-button { width:44px;height:44px; }
-    .connection { min-width:136px;padding:9px 15px;font-size:12px; }
-    .dashboard { grid-template-columns:1fr 1fr;gap:5vw;padding:18px 3% 6px;align-items:end; }
-    .gauge { position:absolute;top:17%;left:50%;width:30%;transform:translateX(-50%); }
-    .joystick-wrap { width:min(38vw,42vh); }
-    .dashboard .left { justify-self:start; }
-    .dashboard .right { justify-self:end; }
-    .label { bottom:-22px;font-size:8px;letter-spacing:.13em; }
-    .footer { display:none; }
-  }
+  /* Speed digits: Exo 2 Black Italic (SIL OFL 1.1), subset to 0-9 + - and embedded so the app works offline. */
+  @font-face { font-family:"Exo2Digits"; font-style:italic; font-weight:900; src:url(data:font/woff2;base64,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) format("woff2"); }
+  :root { color-scheme:dark; --accent:#19e65a; --accent-rgb:25,230,90; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { width:100%;height:100%;margin:0;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none; }
+  body { font-family:Roboto,Inter,-apple-system,"Segoe UI",system-ui,sans-serif;color:#fff; }
+
+  /* The whole UI is drawn on a fixed 1280x576 stage and scaled to fit the screen. */
+  #stage { position:absolute;left:50%;top:50%;width:1280px;height:576px;transform-origin:0 0;overflow:hidden;
+    background:radial-gradient(ellipse 60% 70% at 50% 50%,#0b0507 0%,#050304 55%,#010101 100%); }
+  #frame { position:absolute;inset:0;width:100%;height:100%;pointer-events:none; }
+  #frame path { fill:none;stroke-linecap:round; }
+
+  .round-btn { position:absolute;top:19px;width:70px;height:70px;border-radius:50%;border:1.5px solid #26272b;
+    background:#0b0c0e;display:grid;place-items:center;color:#fff;padding:0;cursor:pointer; }
+  .round-btn:active { border-color:var(--accent); }
+  .round-btn svg { width:30px;height:30px;fill:currentColor; }
+  #settingsBtn { left:74px; } #menuButton { right:74px; }
+
+  #status { position:absolute;left:555px;top:21px;width:171px;height:44px;border-radius:22px;border:1.5px solid #25262a;
+    background:#0b0b0d;display:flex;align-items:center;justify-content:center;gap:12px;font-size:18px;font-weight:500; }
+  #status i { width:17px;height:17px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px 2px rgba(var(--accent-rgb),.55); }
+  #status.offline i { background:#5c5e64;box-shadow:none; } #status.offline { color:#9a9ca2; }
+
+  /* Joysticks */
+  .stick { position:absolute;top:146px;width:270px;height:270px;border-radius:50%;touch-action:none;cursor:grab; }
+  #throttleStick { left:101px; } #steeringStick { left:911px; }
+  .stick .base { position:absolute;inset:0;border-radius:50%;border:2px solid #1d1e21;
+    background:radial-gradient(circle,#020203 0 52%,#050506 53% 100%);box-shadow:inset 0 0 0 1px #000,0 0 40px 6px #000; }
+  .stick .base:after { content:"";position:absolute;inset:14%;border-radius:50%;border:1px solid #121316; }
+  .stick .arc,.stick .glow { position:absolute;inset:-3px;border-radius:50%;
+    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4.5px) calc(100% - 1px),transparent 100%);
+            mask:radial-gradient(farthest-side,transparent calc(100% - 5px),#000 calc(100% - 4.5px) calc(100% - 1px),transparent 100%); }
+  .stick .glow { filter:blur(7px);opacity:.75;inset:-6px; }
+  .stick .knob { position:absolute;z-index:2;left:50%;top:50%;width:90px;height:90px;border-radius:50%;transform:translate(-50%,-50%);
+    background:radial-gradient(circle at 50% 28%,#e9e9eb 0%,#c9c9cd 45%,#b1b1b6 100%);
+    box-shadow:0 0 0 1px #0006,0 6px 14px #000a,0 0 24px rgba(255,255,255,.08); transition:left .07s linear,top .07s linear; }
+  .stick.active .knob { transition:none; }
+
+  /* Gauge */
+  #gauge { position:absolute;left:470px;top:112px;width:340px;height:340px; }
+  #gauge svg { position:absolute;inset:0;width:100%;height:100%;overflow:visible; }
+  #outerRing,#outerGlow { position:absolute;left:0;top:0;width:340px;height:340px;border-radius:50%;
+    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 11px),#000 calc(100% - 10px) calc(100% - 7px),transparent calc(100% - 6px));
+            mask:radial-gradient(farthest-side,transparent calc(100% - 11px),#000 calc(100% - 10px) calc(100% - 7px),transparent calc(100% - 6px)); }
+  #outerGlow { filter:blur(9px); }
+  #gauge .readout { position:absolute;left:0;right:0;top:0;height:340px;text-align:center;pointer-events:none; }
+  #gauge .t { position:absolute;left:0;right:0;top:99px;font-size:17px;font-weight:500;letter-spacing:.34em;text-indent:.34em;color:#b8b9be; }
+  #speedValue { position:absolute;left:0;right:0;top:118px;height:100px;font:italic 900 98px/100px "Exo2Digits","Exo 2","Eurostile",system-ui,sans-serif;
+    letter-spacing:-.02em;color:#fff;text-shadow:0 0 18px rgba(255,255,255,.18); }
+  #gauge .u { position:absolute;left:0;right:0;top:222px;font-size:22px;font-weight:500;color:#8c8d92; }
+  #speedMark { position:absolute;left:115px;top:279px;width:110px;height:17px; }
+  #speedMark i { position:absolute;top:0;height:17px;width:19px;transform:skewX(-30deg);background:var(--accent);filter:drop-shadow(0 0 4px var(--accent)); }
 </style>
 </head>
 <body>
-<div class="app">
-  <header class="topbar">
-    <button class="icon-button" aria-label="Settings" title="Settings">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/><circle cx="12" cy="12" r="4.2"/></svg>
-    </button>
-    <div id="status" class="connection"><i class="dot"></i><span id="statusText">CONNECTED</span></div>
-    <button id="menuButton" class="icon-button right" aria-label="Menu" title="Robot address">
-      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-    </button>
-  </header>
+<div id="stage">
+  <svg id="frame" viewBox="0 0 1280 576" preserveAspectRatio="none" aria-hidden="true">
+    <defs>
+      <linearGradient id="gRedL" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="var(--accent)" stop-opacity=".95"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient>
+      <linearGradient id="gTop" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="var(--accent)" stop-opacity="0"/><stop offset=".25" stop-color="var(--accent)" stop-opacity=".9"/><stop offset=".5" stop-color="var(--accent)"/><stop offset=".75" stop-color="var(--accent)" stop-opacity=".9"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient>
+      <filter id="fglow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4"/></filter>
+      <radialGradient id="gTopGlow" cx=".5" cy="0" r="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".22"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></radialGradient>
+    </defs>
+    <!-- top connection bracket -->
+    <path d="M478 0 L520 40 Q540 70 580 71 L700 71 Q740 70 760 40 L802 0" fill="url(#gTopGlow)" stroke="none"/>
+    <path d="M478 0 L536 52 Q556 74 590 74 L690 74 Q724 74 744 52 L802 0" stroke="#1d1e22" stroke-width="1.2"/>
+    <path d="M530 46 Q552 74 590 74 L690 74 Q728 74 750 46" stroke="url(#gTop)" stroke-width="2.4" filter="url(#fglow)" opacity=".9"/>
+    <path d="M540 56 Q558 74 592 74 L688 74 Q722 74 740 56" stroke="url(#gTop)" stroke-width="1.6"/>
+    <!-- left side lines -->
+    <path d="M0 160 Q40 150 62 112 L108 78 L255 -6" stroke="#17181b" stroke-width="1.2"/>
+    <path d="M0 160 Q38 152 58 112 L88 86" stroke="url(#gRedL)" stroke-width="2" style="stroke:var(--accent)" opacity=".85"/>
+    <path d="M0 368 L150 520 Q170 546 205 548 L285 548" stroke="#17181b" stroke-width="1.2"/>
+    <path d="M0 440 L128 540 L180 560" stroke="var(--accent)" stroke-width="1.8" opacity=".8"/>
+    <path d="M0 440 L128 540 L180 560" stroke="var(--accent)" stroke-width="5" filter="url(#fglow)" opacity=".45"/>
+    <!-- right side lines (mirror) -->
+    <path d="M1280 160 Q1240 150 1218 112 L1172 78 L1025 -6" stroke="#17181b" stroke-width="1.2"/>
+    <path d="M1280 160 Q1242 152 1222 112 L1192 86" stroke="var(--accent)" stroke-width="2" opacity=".85"/>
+    <path d="M1280 368 L1130 520 Q1110 546 1075 548 L995 548" stroke="#17181b" stroke-width="1.2"/>
+    <path d="M1280 440 L1152 540 L1100 560" stroke="var(--accent)" stroke-width="1.8" opacity=".8"/>
+    <path d="M1280 440 L1152 540 L1100 560" stroke="var(--accent)" stroke-width="5" filter="url(#fglow)" opacity=".45"/>
+  </svg>
 
-  <main class="dashboard">
-    <div class="joystick-wrap left">
-      <div class="joystick" id="throttleStick" aria-label="Throttle joystick"><div class="knob" id="throttleKnob"><span>↕</span></div></div>
-      <div class="label">THROTTLE · FWD / REV</div>
+  <button id="settingsBtn" class="round-btn" aria-label="Settings" title="Settings">
+    <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+  </button>
+  <div id="status"><i></i><span id="statusText">Connected</span></div>
+  <button id="menuButton" class="round-btn" aria-label="Robot address" title="Robot address">
+    <svg viewBox="0 0 24 24"><path d="M3 5.5h18v2.4H3zM3 10.8h18v2.4H3zM3 16.1h18v2.4H3z"/></svg>
+  </button>
+
+  <div class="stick" id="throttleStick" aria-label="Throttle joystick (forward / reverse)">
+    <div class="base"></div><div class="glow"></div><div class="arc"></div>
+    <div class="knob" id="throttleKnob"></div>
+  </div>
+  <div class="stick" id="steeringStick" aria-label="Steering joystick (left / right)">
+    <div class="base"></div><div class="glow"></div><div class="arc"></div>
+    <div class="knob" id="steeringKnob"></div>
+  </div>
+
+  <div id="gauge" aria-label="Current speed">
+    <div id="outerGlow"></div><div id="outerRing"></div>
+    <svg viewBox="-170 -170 340 340" id="segs" aria-hidden="true"></svg>
+    <div class="readout">
+      <div class="t">SPEED</div>
+      <div id="speedValue">0</div>
+      <div class="u">km/h</div>
+      <div id="speedMark"></div>
     </div>
-    <div class="gauge" aria-label="Current speed"><div class="gauge-inner"><div class="gauge-title">SPEED</div><div class="speed" id="speedValue">0</div><div class="unit">km/h</div><div class="speed-mark"></div></div></div>
-    <div class="joystick-wrap right">
-      <div class="joystick right" id="steeringStick" aria-label="Steering joystick"><div class="knob" id="steeringKnob"><span>‹ ›</span></div></div>
-      <div class="label">STEERING · L / R</div>
-    </div>
-  </main>
-  <div class="footer">PUSH AND HOLD TO DRIVE · RELEASE BOTH STICKS TO STOP</div>
+  </div>
 </div>
+
 <script>
 (() => {
-  const DEAD_ZONE = 0.06;
-  const SEND_INTERVAL_MS = 60;
-  const MAX_STICK_TRAVEL = 0.34;
-  let BASE_URL = "";
-  let throttle = 0;
-  let steering = 0;
-  let lastSent = "";
-  let lastSendAt = 0;
-  let requestBusy = false;
+  const DEAD_ZONE = 0.06, SEND_INTERVAL_MS = 60, MAX_STICK_TRAVEL = 0.30;
+  const SEGS = 20, SIDE_SPAN = 130;       // 20 segments per side, 0 at the top, +-130deg
+  let BASE_URL = "", throttle = 0, steering = 0, speed = 0;
+  let lastSent = "", lastSendAt = 0, requestBusy = false;
   try { if (window.Android && window.Android.getBaseUrl) BASE_URL = window.Android.getBaseUrl() || ""; } catch (_) {}
-  const status = document.getElementById("status");
-  const statusText = document.getElementById("statusText");
-  const speedValue = document.getElementById("speedValue");
-  function setConnection(ok) { status.classList.toggle("offline", !ok); statusText.textContent = ok ? "CONNECTED" : "OFFLINE"; }
-  function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
-  function controlUrl(l, r) { return `${BASE_URL}/control?left=${l}&right=${r}`; }
-  function updateSpeed() { speedValue.textContent = String(Math.round(Math.abs(throttle) * 42)); }
-  function updateDrive(force = false) {
-    updateSpeed();
-    if (!BASE_URL) { setConnection(false); return; }
+
+  const $ = id => document.getElementById(id);
+  const stage = $("stage"), status = $("status"), statusText = $("statusText"), speedValue = $("speedValue");
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  /* ---------- fit the 1280x576 stage to any screen ---------- */
+  function fit() {
+    const s = Math.min(innerWidth / 1280, innerHeight / 576);
+    stage.style.transform = `scale(${s}) translate(-50%,-50%)`;
+  }
+  addEventListener("resize", fit); fit();
+
+  /* ---------- colour: green (0) -> amber -> reddish-orange (+-100) ---------- */
+  const STOPS = [[0,[25,230,90]],[.38,[190,225,40]],[.6,[255,170,25]],[.8,[255,105,25]],[1,[255,40,22]]];
+  function colorAt(t) {
+    t = clamp(t, 0, 1);
+    for (let i = 1; i < STOPS.length; i++) if (t <= STOPS[i][0]) {
+      const [t0, c0] = STOPS[i-1], [t1, c1] = STOPS[i], k = (t - t0) / (t1 - t0);
+      return c0.map((v, j) => Math.round(v + (c1[j] - v) * k));
+    }
+    return STOPS[STOPS.length-1][1];
+  }
+  const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+  /* ---------- gauge segments (SVG, built once) ---------- */
+  const NS = "http://www.w3.org/2000/svg", R_OUT = 140, R_IN = 111;
+  const pt = (r, deg) => [r * Math.sin(deg * Math.PI / 180), -r * Math.cos(deg * Math.PI / 180)];
+  function segPath(a0, a1) {
+    const p = (r, a) => pt(r, a).map(n => n.toFixed(2)).join(" ");
+    return `M${p(R_IN,a0)} L${p(R_OUT,a0)} A${R_OUT} ${R_OUT} 0 0 ${a1>a0?1:0} ${p(R_OUT,a1)} L${p(R_IN,a1)} A${R_IN} ${R_IN} 0 0 ${a1>a0?0:1} ${p(R_IN,a0)}Z`;
+  }
+  const segEls = [];   // {el, frac, dir}
+  const segSvg = $("segs");
+  segSvg.innerHTML = `<defs><radialGradient id="fade" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="${R_OUT}"><stop offset="${(R_IN/R_OUT).toFixed(3)}" stop-color="#fff" stop-opacity=".38"/><stop offset="1" stop-color="#fff"/></radialGradient><mask id="fadeMask"><rect x="-170" y="-170" width="340" height="340" fill="url(#fade)"/></mask></defs>`;
+  const g = document.createElementNS(NS, "g"); g.setAttribute("mask", "url(#fadeMask)"); segSvg.appendChild(g);
+  for (const dir of [1, -1]) for (let i = 0; i < SEGS; i++) {
+    const w = SIDE_SPAN / SEGS, a0 = dir * (1.1 + i * w), a1 = dir * ((i + 1) * w - .6);
+    const el = document.createElementNS(NS, "path"); el.setAttribute("d", segPath(a0, a1)); g.appendChild(el);
+    segEls.push({ el, i, dir });
+  }
+  const bars = $("speedMark");
+  for (let i = 0; i < 4; i++) { const b = document.createElement("i"); b.style.left = (i * 24) + "px"; bars.appendChild(b); }
+
+  /* ---------- arcs on the joystick rings & the gauge outer ring ---------- */
+  // [start, peak-start, peak-end, end] in degrees clockwise from top
+  const STICK_ARCS = { throttleStick: [[18,35,75,104],[158,190,235,262]], steeringStick: [[104,138,172,204],[262,282,330,352]] };
+  function conic(arcs, c, boost, base) {
+    const stops = [];
+    for (let d = 0; d <= 360; d += 5) {
+      let a = 0;
+      for (const [s, p0, p1, e] of arcs) {
+        if (d > s && d < e) a = Math.max(a, d < p0 ? (d - s) / (p0 - s) : d > p1 ? (e - d) / (e - p1) : 1);
+      }
+      stops.push(`${rgba(c, Math.min(1, a * boost + (base || 0)))} ${d}deg`);
+    }
+    return `conic-gradient(${stops.join(",")})`;
+  }
+  const stickArcEls = ["throttleStick", "steeringStick"].map(id => $(id));
+
+  function renderTheme() {
+    const t = Math.abs(speed) / 100, c = colorAt(t);
+    stage.style.setProperty("--accent", `rgb(${c})`);
+    stage.style.setProperty("--accent-rgb", c.join(","));
+    document.documentElement.style.setProperty("--accent", `rgb(${c})`);
+    document.documentElement.style.setProperty("--accent-rgb", c.join(","));
+    // gauge segments: colour by distance from zero, lit from the centre outward
+    for (const { el, i, dir } of segEls) {
+      const sc = colorAt((i + .5) / SEGS), lit = (Math.sign(speed) === dir || (speed === 0 && false)) ? clamp(Math.abs(speed) / 100 * SEGS - i, 0, 1) : 0;
+      el.setAttribute("fill", `rgb(${sc})`); el.setAttribute("fill-opacity", (.13 + .87 * lit).toFixed(3));
+    }
+    // outer ring: faint everywhere, hot spot rides at the current angle
+    const ang = speed / 100 * SIDE_SPAN, mid = ((ang % 360) + 360) % 360;
+    const lo = ((mid - 70) + 360) % 360, hi = (mid + 70) % 360;
+    const peak = [[lo - 0, mid - 18, mid + 18, lo + 140]];
+    const arcs = []; for (const k of [-360, 0, 360]) arcs.push([lo + k, mid - 18 + k, mid + 18 + k, lo + 140 + k]);
+    const spanArcs = []; for (const k of [0, 360]) spanArcs.push([-134 + k, -120 + k, 120 + k, 134 + k]);
+    const faint = conic(spanArcs, c, .32), hot = conic(arcs, [Math.min(255, c[0] + 40), Math.min(255, c[1] + 60), Math.min(255, c[2] + 60)], .35 + .65 * t + .25);
+    $("outerRing").style.background = `${hot},${faint}`;
+    $("outerGlow").style.background = `${hot}`;
+    $("outerGlow").style.opacity = (.55 + .45 * t).toFixed(2);
+    stickArcEls.forEach(st => {
+      const arcsDef = STICK_ARCS[st.id], boost = .9;
+      const bg = conic(arcsDef, c, boost);
+      st.querySelector(".arc").style.background = bg; st.querySelector(".glow").style.background = bg;
+    });
+    // text
+    speedValue.textContent = String(speed);
+    speedValue.style.textShadow = `0 0 ${14 + 16 * t}px rgba(${c.join(",")},${.15 + .35 * t})`;
+  }
+
+  function setConnection(ok) { status.classList.toggle("offline", !ok); statusText.textContent = ok ? "Connected" : "Offline"; }
+  const controlUrl = (l, r) => `${BASE_URL}/control?left=${l}&right=${r}`;
+
+  function compute() {
     const t = Math.abs(throttle) < DEAD_ZONE ? 0 : throttle;
     const s = Math.abs(steering) < DEAD_ZONE ? 0 : steering;
-    const l = Math.round(clamp(t + s, -1, 1) * 100);
-    const r = Math.round(clamp(t - s, -1, 1) * 100);
-    const command = `${l},${r}`; const now = Date.now();
+    const l = Math.round(clamp(t + s, -1, 1) * 100), r = Math.round(clamp(t - s, -1, 1) * 100);
+    return { l, r };
+  }
+  let lastShown = null;
+  function updateDrive(force = false) {
+    const { l, r } = compute();
+    // speed shown is the forward/reverse speed of the robot: -100 (full reverse) .. +100 (full forward)
+    speed = clamp(Math.round((l + r) / 2), -100, 100);
+    if (speed !== lastShown) { lastShown = speed; renderTheme(); }
+    if (!BASE_URL) { setConnection(false); return; }
+    const command = `${l},${r}`, now = Date.now();
     if (!force && (command === lastSent || now - lastSendAt < SEND_INTERVAL_MS)) return;
     if (requestBusy) return;
     requestBusy = true; lastSent = command; lastSendAt = now;
-    fetch(controlUrl(l, r), { method:"GET", cache:"no-store" })
-      .then(response => { if (!response.ok) throw new Error("HTTP " + response.status); setConnection(true); })
+    fetch(controlUrl(l, r), { method: "GET", cache: "no-store" })
+      .then(res => { if (!res.ok) throw new Error("HTTP " + res.status); setConnection(true); })
       .catch(() => setConnection(false)).finally(() => { requestBusy = false; });
   }
+
   function attachStick(stickId, knobId, axis) {
-    const stick = document.getElementById(stickId), knob = document.getElementById(knobId); let pointerId = null;
-    function move(event) {
-      if (pointerId !== event.pointerId) return;
+    const stick = $(stickId), knob = $(knobId); let pointerId = null;
+    function move(e) {
+      if (pointerId !== e.pointerId) return;
       const rect = stick.getBoundingClientRect(), cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2, limit = rect.width * MAX_STICK_TRAVEL;
-      let dx = event.clientX - cx, dy = event.clientY - cy;
-      if (axis === "y") dx = 0; if (axis === "x") dy = 0;
-      const distance = Math.hypot(dx, dy); if (distance > limit) { const scale = limit / distance; dx *= scale; dy *= scale; }
+      let dx = e.clientX - cx, dy = e.clientY - cy;
+      if (axis === "y") dx = 0; else dy = 0;
+      const d = Math.hypot(dx, dy); if (d > limit) { dx *= limit / d; dy *= limit / d; }
       knob.style.left = `${50 + dx / rect.width * 100}%`; knob.style.top = `${50 + dy / rect.height * 100}%`;
-      if (axis === "y") throttle = clamp(-dy / limit, -1, 1); else steering = clamp(dx / limit, -1, 1); updateDrive();
+      if (axis === "y") throttle = clamp(-dy / limit, -1, 1); else steering = clamp(dx / limit, -1, 1);
+      updateDrive();
     }
-    function release(event) {
-      if (pointerId !== event.pointerId) return; pointerId = null;
-      try { stick.releasePointerCapture(event.pointerId); } catch (_) {}
+    function release(e) {
+      if (pointerId !== e.pointerId) return; pointerId = null; stick.classList.remove("active");
+      try { stick.releasePointerCapture(e.pointerId); } catch (_) {}
       knob.style.left = "50%"; knob.style.top = "50%";
       if (axis === "y") throttle = 0; else steering = 0; updateDrive(true);
     }
-    stick.addEventListener("pointerdown", event => { if (pointerId !== null) return; pointerId = event.pointerId; stick.setPointerCapture(pointerId); move(event); });
-    stick.addEventListener("pointermove", move); stick.addEventListener("pointerup", release); stick.addEventListener("pointercancel", release); stick.addEventListener("lostpointercapture", release);
+    stick.addEventListener("pointerdown", e => { if (pointerId !== null) return; pointerId = e.pointerId; stick.classList.add("active"); stick.setPointerCapture(pointerId); move(e); });
+    stick.addEventListener("pointermove", move); stick.addEventListener("pointerup", release);
+    stick.addEventListener("pointercancel", release); stick.addEventListener("lostpointercapture", release);
   }
   attachStick("throttleStick", "throttleKnob", "y"); attachStick("steeringStick", "steeringKnob", "x");
+
   window.__getRobotBase = () => BASE_URL;
   window.__setRobotBase = url => { BASE_URL = url || ""; try { if (window.Android && window.Android.saveBaseUrl) window.Android.saveBaseUrl(BASE_URL); } catch (_) {} lastSent = ""; updateDrive(true); };
-  window.__stopDrive = () => { throttle = 0; steering = 0; updateSpeed(); if (lastSent !== "0,0") updateDrive(true); };
-  document.getElementById("menuButton").addEventListener("click", () => { try { if (window.Android && window.Android.editBaseUrl) window.Android.editBaseUrl(); } catch (_) {} });
-  document.addEventListener("visibilitychange", () => { if (document.hidden) { throttle = 0; steering = 0; fetch(controlUrl(0, 0), { method:"GET", cache:"no-store", keepalive:true }).catch(() => {}); } });
-  if (!BASE_URL && window.Android && window.Android.editBaseUrl) window.Android.editBaseUrl(); else fetch(controlUrl(0, 0), { cache:"no-store" }).then(r => { if (!r.ok) throw new Error(); setConnection(true); }).catch(() => setConnection(false));
+  window.__stopDrive = () => { throttle = 0; steering = 0; updateDrive(true); };
+  $("menuButton").addEventListener("click", () => { try { if (window.Android && window.Android.editBaseUrl) window.Android.editBaseUrl(); } catch (_) {} });
+  document.addEventListener("visibilitychange", () => { if (document.hidden) { throttle = 0; steering = 0; updateDrive(true); } });
+
+  renderTheme();
+  if (!BASE_URL && window.Android && window.Android.editBaseUrl) window.Android.editBaseUrl();
+  else if (BASE_URL) fetch(controlUrl(0, 0), { cache: "no-store" }).then(r => { if (!r.ok) throw new Error(); setConnection(true); }).catch(() => setConnection(false));
+  else setConnection(false);
+  window.__setSpeedPreview = v => { speed = clamp(Math.round(v), -100, 100); lastShown = speed; renderTheme(); };  // visual testing hook
 })();
 </script>
 </body>
